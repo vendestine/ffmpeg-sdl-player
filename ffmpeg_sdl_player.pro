@@ -21,11 +21,16 @@ LIBS += $$PWD/ffmpeg-4.2.1-win32-dev/lib/avformat.lib   \
 HEADERS += \
     log.h \
     thread.h \
-    demuxthread.h
+    demuxthread.h \
+    queue.h \
+    avpacketqueue.h \
+    avframequeue.h
 
 SOURCES += main.cpp \
     log.cpp \
-    demuxthread.cpp
+    demuxthread.cpp \
+    avpacketqueue.cpp \
+    avframequeue.cpp
 
 
 
