@@ -1,40 +1,96 @@
-#include <iostream>          // 包含输入输出流库
-#include "log.h"            // 包含日志功能的头文件
-#include "demuxthread.h"    // 包含 DemuxThread 类的头文件
-using namespace std;        // 使用标准命名空间以简化代码
+#include <iostream>
+#include "log.h"           // 日志功能的定义
+#include "demuxthread.h"   // 解复用线程的定义
+#include "avframequeue.h"  // 帧队列的定义
+#include "decodethread.h"  // 解码线程的定义
+using namespace std;
 
+// 主程序
 int main(int argc, char *argv[]) {
     LogInit(); // 初始化日志功能
 
     int ret = 0; // 定义返回值，初始为 0
 
-    // 创建音频和视频队列
-    AVPacketQueue audio_queue; // 音频数据包队列
-    AVPacketQueue video_queue; // 视频数据包队列
+    // 创建音频和视频 包队列
+    AVPacketQueue audio_packet_queue; // 用于存储音频数据包的队列
+    AVPacketQueue video_packet_queue; // 用于存储视频数据包的队列
+
+    // 创建音频和视频 帧队列
+    AVFrameQueue audio_frame_queue;  // 用于存储解码后的音频帧的队列
+    AVFrameQueue video_frame_queue;  // 用于存储解码后的视频帧的队列
 
     // 1. 解复用（Demuxing）
-    DemuxThread *demux_thread = new DemuxThread(&audio_queue, &video_queue); // 创建解复用线程对象，传入音频和视频队列的指针
-    ret = demux_thread->Init("time.mp4"); // 初始化解复用器，传入待处理的媒体文件
-    // 检查初始化是否成功
+    // 创建解复用线程对象，传入音频和视频队列的指针
+    DemuxThread *demux_thread = new DemuxThread(&audio_packet_queue, &video_packet_queue);
+    // 初始化解复用器，传入待处理的媒体文件
+    ret = demux_thread->Init("time.mp4");
     if(ret < 0) {
-        LogError("demux_thread.Init failed"); // 记录初始化失败日志
+        LogError("demux_thread.Init failed");
         return -1;
     }
-
     // 启动解复用线程
-    ret = demux_thread->Start(); // 开始解复用操作
-    if(ret < 0) { // 检查启动是否成功
-        LogError("demux_thread.Start() failed"); // 记录启动失败日志
+    ret = demux_thread->Start();
+    if(ret < 0) {
+        LogError("demux_thread.Start() failed");
         return -1;
     }
 
-    // 休眠2秒，让解复用线程有时间运行
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    // 2. 解码（Decoding)
+    /*
+     * 注意解复用线程启动后，这里就创建了解码线程，所以有可能解复用线程数据还没有解复用完毕的时候，
+     * 解码器就已经初始化完，也开始解码了
+     */
+    // 2.1 创建音频解码线程
+    DecodeThread *audio_decode_thread = new DecodeThread(&audio_packet_queue, &audio_frame_queue);
+    // 初始化音频解码器
+    ret = audio_decode_thread->Init(demux_thread->AudioCodecParameters());
+    if(ret < 0) {
+        LogError("audio_decode_thread->Init() failed");
+        return -1;
+    }
+    // 启动音频解码线程
+    ret = audio_decode_thread->Start();
+    if(ret < 0) {
+        LogError("audio_decode_thread->Start() failed");
+        return -1;
+    }
 
+    // 2.2 创建视频解码线程
+    DecodeThread *video_decode_thread = new DecodeThread(&video_packet_queue, &video_frame_queue);
+    // 初始化视频解码器
+    ret = video_decode_thread->Init(demux_thread->VideoCodecParameters());
+    if(ret < 0) {
+        LogError("video_decode_thread->Init() failed");
+        return -1;
+    }
+    // 启动视频解码线程
+    ret = video_decode_thread->Start();
+    if(ret < 0) {
+        LogError("video_decode_thread->Start() failed");
+        return -1;
+    }
+
+    // 休眠2秒
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000)); // 延时2秒，让解复用线程和解码线程处理数据
+
+    // 停止解复用线程，并释放资源
+    LogInfo("demux_thread->Stop");
     demux_thread->Stop(); // 停止解复用线程
+    LogInfo("delete demux_thread");
     delete demux_thread; // 释放解复用线程对象的内存
 
-    LogInfo("main finish");
+    // 停止音频解码线程，并释放资源
+    LogInfo("audio_decode_thread->Stop()");
+    audio_decode_thread->Stop(); // 停止音频解码线程
+    LogInfo("delete audio_decode_thread");
+    delete audio_decode_thread; // 释放音频解码线程对象的内存
 
+    // 停止视频解码线程，并释放资源
+    LogInfo("video_decode_thread->Stop()");
+    video_decode_thread->Stop(); // 停止视频解码线程
+    LogInfo("delete video_decode_thread");
+    delete video_decode_thread; // 释放视频解码线程对象的内存
+
+    LogInfo("main finish");
     return 0;
 }

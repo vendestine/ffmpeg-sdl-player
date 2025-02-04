@@ -10,8 +10,7 @@ extern "C" {
 #endif
 
 // DemuxThread 类，负责音视频解复用
-class DemuxThread : public Thread
-{
+class DemuxThread : public Thread {
 public:
     DemuxThread(AVPacketQueue *audio_queue, AVPacketQueue *video_queue); // 构造函数
     ~DemuxThread(); // 析构函数
@@ -20,14 +19,16 @@ public:
     int Stop();                  // 停止解复用线程
     void Run();                  // 实际的解复用线程函数
 
+    AVCodecParameters *AudioCodecParameters(); // 获取音频解码参数
+    AVCodecParameters *VideoCodecParameters(); // 获取视频解码参数
 private:
     char err2str[256] = {0}; // 存储错误信息的字符串
     std::string url_;        // 媒体文件的 URL
 
-    AVPacketQueue *audio_queue_; // 指向音频队列的指针
-    AVPacketQueue *video_queue_; // 指向视频队列的指针
+    AVPacketQueue *audio_queue_ = NULL; // 指向音频队列的指针
+    AVPacketQueue *video_queue_ = NULL; // 指向视频队列的指针
 
-    AVFormatContext *ifmt_ctx_; // FFmpeg 输入格式上下文
+    AVFormatContext *ifmt_ctx_ = NULL; // 输入格式上下文，存储媒体文件信息
     int audio_index_ = -1;      // 音频流索引
     int video_index_ = -1;      // 视频流索引
 };

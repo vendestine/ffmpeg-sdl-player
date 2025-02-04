@@ -87,6 +87,12 @@ void DemuxThread::Run() {
 
     // 终止之前，循环读取 AVPacket
     while (abort_ != 1) {
+        // 限制音频和视频队列的大小，防止内存溢出
+        if(audio_queue_->Size() > 100 || video_queue_->Size() > 100) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10)); // 如果队列已满，休眠
+            continue; // 继续下次循环
+        }
+
         // 5. 从输入格式上下文（解复用器上下文）中读取数据包
         ret = av_read_frame(ifmt_ctx_, &pkt);
         if (ret < 0) {
@@ -105,9 +111,25 @@ void DemuxThread::Run() {
         } else {
             av_packet_unref(&pkt); // 释放不需要的包
         }
-
-        av_packet_unref(&pkt); // 释放数据包内存，准备读取下一个包
     }
 
     LogInfo("Run finish"); // 日志记录线程运行结束
+}
+
+// 获取音频流的编解码参数
+AVCodecParameters *DemuxThread::AudioCodecParameters() {
+    if (audio_index_ != -1) {
+        return ifmt_ctx_->streams[audio_index_]->codecpar; // 返回音频流的编解码参数
+    } else {
+        return NULL; // 如果没有音频流，返回 NULL
+    }
+}
+
+// 获取视频流的编解码参数
+AVCodecParameters *DemuxThread::VideoCodecParameters() {
+    if (video_index_ != -1) {
+        return ifmt_ctx_->streams[video_index_]->codecpar; // 返回视频流的编解码参数
+    } else {
+        return NULL; // 如果没有视频流，返回 NULL
+    }
 }

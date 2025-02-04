@@ -24,13 +24,16 @@ HEADERS += \
     demuxthread.h \
     queue.h \
     avpacketqueue.h \
-    avframequeue.h
+    avframequeue.h \
+    decodethread.h \
+
 
 SOURCES += main.cpp \
     log.cpp \
     demuxthread.cpp \
     avpacketqueue.cpp \
-    avframequeue.cpp
+    avframequeue.cpp \
+    decodethread.cpp
 
 
 
