@@ -106,8 +106,9 @@ void DemuxThread::Run() {
             ret = audio_queue_->Push(&pkt); // 推送音频包到音频队列
             LogInfo("audio pkt queue size:%d", audio_queue_->Size()); // 打印音频队列大小
         } else if (pkt.stream_index == video_index_) {
-            ret = video_queue_->Push(&pkt); // 推送视频包到视频队列
-            LogInfo("video pkt queue size:%d", video_queue_->Size()); // 打印视频队列大小
+            // ret = video_queue_->Push(&pkt); // 推送视频包到视频队列
+            // LogInfo("video pkt queue size:%d", video_queue_->Size()); // 打印视频队列大小
+            av_packet_unref(&pkt); // 释放不需要的包
         } else {
             av_packet_unref(&pkt); // 释放不需要的包
         }

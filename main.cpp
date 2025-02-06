@@ -3,9 +3,11 @@
 #include "demuxthread.h"   // 解复用线程的定义
 #include "avframequeue.h"  // 帧队列的定义
 #include "decodethread.h"  // 解码线程的定义
+#include "audiooutput.h"
 using namespace std;
 
 // 主程序
+#undef main
 int main(int argc, char *argv[]) {
     LogInit(); // 初始化日志功能
 
@@ -70,8 +72,23 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    // 3. 音频输出
+    AudioParams audio_params = {0}; // 初始化音频参数
+    memset(&audio_params, 0, sizeof(AudioParams)); // 将音频参数结构清零
+    audio_params.channels = demux_thread->AudioCodecParameters()->channels; // 设置声道数
+    audio_params.channel_layout = demux_thread->AudioCodecParameters()->channel_layout; // 设置声道布局
+    audio_params.fmt = (enum AVSampleFormat) demux_thread->AudioCodecParameters()->format; // 设置样本格式
+    audio_params.freq = demux_thread->AudioCodecParameters()->sample_rate; // 设置采样率
+    audio_params.frame_size = demux_thread->AudioCodecParameters()->frame_size; // 设置帧大小
+    AudioOutput *audio_output = new AudioOutput(audio_params, &audio_frame_queue); // 创建音频输出对象
+    ret = audio_output->Init(); // 初始化音频输出
+    if (ret < 0) {
+        LogError("audio_output->Init() failed"); // 初始化失败，记录错误信息
+        return -1; // 返回错误
+    }
+
     // 休眠2秒
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000)); // 延时2秒，让解复用线程和解码线程处理数据
+    std::this_thread::sleep_for(std::chrono::milliseconds(120* 1000));
 
     // 停止解复用线程，并释放资源
     LogInfo("demux_thread->Stop");

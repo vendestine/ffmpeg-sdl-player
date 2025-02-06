@@ -16,6 +16,7 @@ DecodeThread::~DecodeThread() {
     // 6. 关闭解码器和释放解码器上下文
     if (codec_ctx_) {
         avcodec_free_context(&codec_ctx_); // 释放解码上下文
+		avcodec_close(codec_ctx_);
     }
 }
 
