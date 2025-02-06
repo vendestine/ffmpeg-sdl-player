@@ -6,7 +6,8 @@
 #include "avframequeue.h"   // 包含 AVFrameQueue 的头文件
 
 // 解码线程类，负责音视频解码
-class DecodeThread : public Thread {
+class DecodeThread : public Thread 
+{
 public:
     DecodeThread(AVPacketQueue *packet_queue, AVFrameQueue *frame_queue); // 构造函数
     ~DecodeThread(); // 析构函数

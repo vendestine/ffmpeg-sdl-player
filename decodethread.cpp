@@ -3,12 +3,14 @@
 
 // 构造函数，初始化数据包和帧队列
 DecodeThread::DecodeThread(AVPacketQueue *packet_queue, AVFrameQueue *frame_queue)
-    : packet_queue_(packet_queue), frame_queue_(frame_queue) {
+    : packet_queue_(packet_queue), frame_queue_(frame_queue) 
+{
     // 不需要特别的初始化逻辑
 }
 
 // 析构函数，停止线程并关闭解码器
-DecodeThread::~DecodeThread() {
+DecodeThread::~DecodeThread() 
+{
     if (thread_) {
         Stop(); // 确保线程被停止
     }
@@ -21,7 +23,8 @@ DecodeThread::~DecodeThread() {
 }
 
 // 初始化解码器
-int DecodeThread::Init(AVCodecParameters *par) {
+int DecodeThread::Init(AVCodecParameters *par) 
+{
     if (!par) { // 检查参数是否为空
         LogError("Init par is null");
         return -1; // 返回错误
@@ -39,6 +42,11 @@ int DecodeThread::Init(AVCodecParameters *par) {
     }
 
     // 3. 根据编解码信息查找相应的解码器
+    // AVCodec *codec;
+    // if(AV_CODEC_ID_H264 == codec_ctx_->codec_id)
+    //     codec = avcodec_find_decoder_by_name("h264_qsv");
+    // else codec = avcodec_find_decoder(codec_ctx_->codec_id); //作业： 硬件解码
+
     AVCodec *codec = avcodec_find_decoder(codec_ctx_->codec_id);
     if (!codec) {
         LogError("avcodec_find_decoder failed");
@@ -57,7 +65,8 @@ int DecodeThread::Init(AVCodecParameters *par) {
 }
 
 // 启动解码线程
-int DecodeThread::Start() {
+int DecodeThread::Start() 
+{
     thread_ = new std::thread(&DecodeThread::Run, this); // 启动新线程执行 Run 函数
     if (!thread_) {
         LogError("new std::thread(&DecodeThread::Run, this) failed"); // 记录错误
@@ -67,12 +76,14 @@ int DecodeThread::Start() {
 }
 
 // 停止解码线程
-int DecodeThread::Stop() {
+int DecodeThread::Stop() 
+{
     Thread::Stop(); // 调用基类的 Stop 方法
 }
 
 // 解码主循环
-void DecodeThread::Run() {
+void DecodeThread::Run() 
+{
     AVFrame *frame = av_frame_alloc(); // 分配解码后的帧
 
     LogInfo("Run into");

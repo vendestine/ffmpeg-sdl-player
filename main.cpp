@@ -4,11 +4,14 @@
 #include "avframequeue.h"  // 帧队列的定义
 #include "decodethread.h"  // 解码线程的定义
 #include "audiooutput.h"
+#include "videooutput.h"
+
 using namespace std;
 
 // 主程序
 #undef main
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+{
     LogInit(); // 初始化日志功能
 
     int ret = 0; // 定义返回值，初始为 0
@@ -20,6 +23,11 @@ int main(int argc, char *argv[]) {
     // 创建音频和视频 帧队列
     AVFrameQueue audio_frame_queue;  // 用于存储解码后的音频帧的队列
     AVFrameQueue video_frame_queue;  // 用于存储解码后的视频帧的队列
+
+    // 创建音视频同步对象
+    AVSync avsync;
+    avsync.InitClock();  // 初始化同步时钟
+
 
     // 1. 解复用（Demuxing）
     // 创建解复用线程对象，传入音频和视频队列的指针
@@ -80,15 +88,29 @@ int main(int argc, char *argv[]) {
     audio_params.fmt = (enum AVSampleFormat) demux_thread->AudioCodecParameters()->format; // 设置样本格式
     audio_params.freq = demux_thread->AudioCodecParameters()->sample_rate; // 设置采样率
     audio_params.frame_size = demux_thread->AudioCodecParameters()->frame_size; // 设置帧大小
-    AudioOutput *audio_output = new AudioOutput(audio_params, &audio_frame_queue); // 创建音频输出对象
+	
+	// 创建音频输出对象
+    AudioOutput *audio_output = new AudioOutput(&avsync, demux_thread->AudioStreamTimebase(), audio_params, &audio_frame_queue); 
     ret = audio_output->Init(); // 初始化音频输出
     if (ret < 0) {
         LogError("audio_output->Init() failed"); // 初始化失败，记录错误信息
         return -1; // 返回错误
     }
 
+    // 4. 视频输出
+    VideoOutput *video_output = new VideoOutput(&avsync, demux_thread->VideoStreamTimebase(),
+                                                &video_frame_queue, demux_thread->VideoCodecParameters()->width,
+                                                demux_thread->VideoCodecParameters()->height);
+    ret = video_output->Init();
+    if(ret < 0) {
+        LogError("video_output->Init() failed");
+        return -1;
+    }
+    video_output->MainLoop();
+
+
     // 休眠2秒
-    std::this_thread::sleep_for(std::chrono::milliseconds(120* 1000));
+    // std::this_thread::sleep_for(std::chrono::milliseconds(2* 1000));
 
     // 停止解复用线程，并释放资源
     LogInfo("demux_thread->Stop");

@@ -9,7 +9,8 @@ extern "C" {
 }
 #endif
 
-class AVPacketQueue {
+class AVPacketQueue 
+{
 public:
     AVPacketQueue();    // 构造函数
     ~AVPacketQueue();   // 析构函数

@@ -2,8 +2,8 @@
 #include "log.h"
 
 // 构造函数：初始化成员变量
-AudioOutput::AudioOutput(const AudioParams &audio_params, AVFrameQueue *frame_queue)
-    : src_tgt_(audio_params), frame_queue_(frame_queue)
+AudioOutput::AudioOutput(AVSync *avsync, AVRational time_base, const AudioParams &audio_params, AVFrameQueue *frame_queue)
+    :avsync_(avsync), time_base_(time_base), src_tgt_(audio_params), frame_queue_(frame_queue)
 {
 }
 
@@ -12,7 +12,7 @@ AudioOutput::~AudioOutput()
 {
 }
 
-// PCM 数据转储文件
+// PCM 数据转储文件（用于调试）
 FILE *dump_pcm = NULL;
 
 // SDL 音频回调函数：填充音频数据到 SDL 音频缓冲区
@@ -38,8 +38,9 @@ void fill_audio_pcm(void *udata, Uint8 *stream, int len) {
         if(is->audio_buf_index == is->audio_buf_size) {
             is->audio_buf_index = 0;   // 更新index，从头开始读
             AVFrame *frame = is->frame_queue_->Pop(10);
-            if(frame) {
-                // 读到解码后的数据
+            if(frame) {  // 读到解码后的数据
+                // 更新pts
+                is->pts_ = frame->pts;
 
                 // 判断是否需要进行重采样
                 if( ((frame->format != is->dst_tgt_.fmt)
@@ -123,6 +124,12 @@ void fill_audio_pcm(void *udata, Uint8 *stream, int len) {
         stream += len1; // 移动输出流指针 stream，指向下一个写入位置
         is->audio_buf_index += len1;  // 更新is->audio_buf_index，指向audio_buf中未被拷⻉到stream的剩余数据的起始位置
     }
+	// 设置时钟
+    if(is->pts_ != AV_NOPTS_VALUE) {
+        double pts = is->pts_ * av_q2d(is->time_base_);  // pts单位从timebase转换成秒
+        LogInfo("audio pts:%0.3lf\n", pts);
+        is->avsync_->SetClock(pts);  // 更新音频时钟，设置audio clock（对时）
+	}
 }
 
 

@@ -31,7 +31,9 @@ HEADERS += \
     avpacketqueue.h \
     avframequeue.h \
     decodethread.h \
-    audiooutput.h
+    audiooutput.h \
+    videooutput.h \
+    avsync.h
 
 
 SOURCES += main.cpp \
@@ -41,6 +43,7 @@ SOURCES += main.cpp \
     avframequeue.cpp \
     decodethread.cpp \
     audiooutput.cpp \
+    videooutput.cpp
 
 
 

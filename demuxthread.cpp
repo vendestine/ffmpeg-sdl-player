@@ -3,12 +3,14 @@
 
 // 构造函数，初始化音视频队列
 DemuxThread::DemuxThread(AVPacketQueue *audio_queue, AVPacketQueue *video_queue)
-    : audio_queue_(audio_queue), video_queue_(video_queue) {
+    : audio_queue_(audio_queue), video_queue_(video_queue) 
+{
     LogInfo("DemuxThread"); // 日志记录构造函数调用
 }
 
 // 析构函数，确保线程被正确停止
-DemuxThread::~DemuxThread() {
+DemuxThread::~DemuxThread() 
+{
     LogInfo("~DemuxThread"); // 日志记录析构函数调用
     if (thread_) { // 在析构之前确保线程被停止
         Stop();
@@ -16,7 +18,8 @@ DemuxThread::~DemuxThread() {
 }
 
 // 初始化解复用器
-int DemuxThread::Init(const char *url) {
+int DemuxThread::Init(const char *url) 
+{
     LogInfo("url:%s", url); // 记录传入的 URL
     int ret = 0;
     url_ = url; // 保存 URL
@@ -59,7 +62,8 @@ int DemuxThread::Init(const char *url) {
 }
 
 // 启动解复用线程
-int DemuxThread::Start() {
+int DemuxThread::Start() 
+{
     // 启动新的线程来执行 Run() 方法
     thread_ = new std::thread(&DemuxThread::Run, this);
     if (!thread_) {
@@ -70,7 +74,8 @@ int DemuxThread::Start() {
 }
 
 // 停止解复用线程
-int DemuxThread::Stop() {
+int DemuxThread::Stop() 
+{
     // 停止线程并关闭输入格式上下文
     Thread::Stop(); // 调用基类的 Stop 函数
 
@@ -79,7 +84,8 @@ int DemuxThread::Stop() {
 }
 
 // 解复用主要逻辑
-void DemuxThread::Run() {
+void DemuxThread::Run() 
+{
     LogInfo("Run into"); // 日志记录线程开始执行
 
     int ret = 0;
@@ -105,10 +111,11 @@ void DemuxThread::Run() {
         if (pkt.stream_index == audio_index_) {
             ret = audio_queue_->Push(&pkt); // 推送音频包到音频队列
             LogInfo("audio pkt queue size:%d", audio_queue_->Size()); // 打印音频队列大小
+			// av_packet_unref(&pkt); // 释放不需要的包
         } else if (pkt.stream_index == video_index_) {
-            // ret = video_queue_->Push(&pkt); // 推送视频包到视频队列
-            // LogInfo("video pkt queue size:%d", video_queue_->Size()); // 打印视频队列大小
-            av_packet_unref(&pkt); // 释放不需要的包
+            ret = video_queue_->Push(&pkt); // 推送视频包到视频队列
+            LogInfo("video pkt queue size:%d", video_queue_->Size()); // 打印视频队列大小
+            // av_packet_unref(&pkt); // 释放不需要的包
         } else {
             av_packet_unref(&pkt); // 释放不需要的包
         }
@@ -118,7 +125,8 @@ void DemuxThread::Run() {
 }
 
 // 获取音频流的编解码参数
-AVCodecParameters *DemuxThread::AudioCodecParameters() {
+AVCodecParameters *DemuxThread::AudioCodecParameters() 
+{
     if (audio_index_ != -1) {
         return ifmt_ctx_->streams[audio_index_]->codecpar; // 返回音频流的编解码参数
     } else {
@@ -127,10 +135,29 @@ AVCodecParameters *DemuxThread::AudioCodecParameters() {
 }
 
 // 获取视频流的编解码参数
-AVCodecParameters *DemuxThread::VideoCodecParameters() {
+AVCodecParameters *DemuxThread::VideoCodecParameters() 
+{
     if (video_index_ != -1) {
         return ifmt_ctx_->streams[video_index_]->codecpar; // 返回视频流的编解码参数
     } else {
         return NULL; // 如果没有视频流，返回 NULL
+    }
+}
+
+AVRational DemuxThread::AudioStreamTimebase()
+{
+    if (audio_index_ != -1) {
+        return ifmt_ctx_->streams[audio_index_]->time_base; // 返回音频流的时间基准
+    } else {
+        return AVRational{0, 0}; // 如果没有音频流，返回(0, 0)
+    }
+}
+
+AVRational DemuxThread::VideoStreamTimebase()
+{
+    if (video_index_ != -1) {
+        return ifmt_ctx_->streams[video_index_]->time_base; // 返回视频流的时间基准
+    } else {
+        return AVRational{0, 0}; // 如果没有视频流，返回(0, 0)
     }
 }

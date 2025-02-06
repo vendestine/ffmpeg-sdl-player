@@ -7,7 +7,8 @@
 
 // 队列 类模板
 template <typename T>
-class Queue {
+class Queue 
+{
 public:
     Queue() {} // 构造函数
     ~Queue() {} // 析构函数
